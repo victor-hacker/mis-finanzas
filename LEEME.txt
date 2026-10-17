@@ -1,0 +1,9 @@
+MIS FINANZAS - PASOS
+1. Supabase > SQL Editor > New query. Pega el contenido de schema.sql y pulsa Run.
+2. Abre index.html en el navegador para probar. Requiere internet.
+3. Crea una cuenta con tu correo y contraseña (Supabase Auth). Confirma el correo.
+4. Para tener un enlace en celular y PC, publica index.html en un alojamiento estático (por ejemplo Netlify Drop). NO publiques contraseñas ni claves secretas.
+5. En Supabase > Authentication > URL Configuration, añade la URL publicada a Redirect URLs y establece Site URL según el sitio.
+6. Descarga periódicamente un respaldo JSON en Ajustes.
+IMPORTANTE: La primera carga incluye datos históricos de referencia: deudas S/2933.98, dinero con hermano S/1982.39, ahorro moto S/306.94. Comprueba estos saldos antes de usarla. Los pagos mensuales de ejemplo también deben revisarse.
+La clave incluida en index.html es una clave PUBLICABLE de Supabase, NO es la clave secreta. La tabla finance_app_state utiliza RLS para separar usuarios.
