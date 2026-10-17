@@ -35,4 +35,65 @@ function removeBillPayment(id){let x=state.billPayments.find(x=>x.id===id);if(!x
 const originalLoad=loadSettings;loadSettings=function(){originalLoad();document.querySelector('#ahorro .callout').textContent='Meta de Honda NX190 + protección: '+(state.target?fmt(state.target):'pendiente de definir')+' (editable en Ajustes).';};
 const originalRender=render;render=function(){originalRender();document.querySelector('#ahorro .callout').textContent='Meta de Honda NX190 + protección: '+(state.target?fmt(state.target):'pendiente de definir')+' (editable en Ajustes).';};
 loadSettings();render();
+</script><style>
+#syncGate{position:fixed;inset:0;background:#f4f8fa;z-index:9999;display:grid;place-items:center;padding:20px}#syncGate .card{width:min(450px,100%)}#syncGate input{margin:12px 0}#syncGate button{width:100%}#syncGate .notice{line-height:1.6;color:#556a7b}#syncBadge{cursor:default}#syncGate[hidden]{display:none!important}
+</style>
+<div id="syncGate"><div class="card"><h2>✦ Mis Finanzas</h2><h3>Sincronización segura</h3><p class="notice" id="authNotice">Ingresa con tu correo. Te enviaremos un enlace para iniciar sesión y acceder a tus registros desde cualquier dispositivo.</p><label>Correo electrónico<input type="email" id="authEmail" autocomplete="email" placeholder="tucorreo@ejemplo.com"></label><button class="primary" id="authSend">Enviar enlace de acceso</button><p class="mini" id="authMessage"></p></div></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+/* Configuración pública: jamás colocar service_role ni sb_secret en HTML. */
+(function(){
+const PROJECT_URL='https://hqdobevnscvegcgrnwtb.supabase.co';
+const PUBLIC_KEY='sb_publishable_pyDE495xsqRlxeUkUqMPjw_G9Y1OC9r';
+const gate=document.getElementById('syncGate'),msg=document.getElementById('authMessage'),badge=document.querySelector('.topbar .badge');
+const send=document.getElementById('authSend');
+let client=null,uid=null,remoteVersion=null,saveQueue=Promise.resolve(),ready=false;
+const localPersist=persist;
+function status(t){badge.textContent=t;msg.textContent=t;}
+function authError(t){msg.textContent=t;}
+async function writeRemote(){
+ if(!ready||!uid)return;
+ const snapshot=JSON.parse(JSON.stringify(state));
+ const result=await client.from('finance_profiles').upsert({user_id:uid,data:snapshot,updated_at:new Date().toISOString()},{onConflict:'user_id'});
+ if(result.error)throw result.error;
+ localPersist();status('✓ Sincronizado');
+}
+persist=function(){
+ localPersist();if(!ready)return;
+ status('↻ Guardando...');
+ saveQueue=saveQueue.catch(()=>{}).then(writeRemote).catch(err=>{status('⚠ Sin sincronizar: '+err.message);});
+};
+async function enter(session){
+ if(!session?.user){gate.hidden=false;ready=false;return;}
+ uid=session.user.id;ready=false;gate.hidden=false;status('↻ Cargando tus finanzas...');
+ const result=await client.from('finance_profiles').select('data').eq('user_id',uid).maybeSingle();
+ if(result.error){authError('No se pudo cargar: '+result.error.message+' — verifica que ejecutaste el archivo SQL en Supabase.');return;}
+ if(result.data?.data){state={...structuredClone(seed),...result.data.data};state.debtors??=[];state.debtorMoves??=[];state.billPayments??=[];localPersist();}
+ else {
+   const old=localStorage.getItem(KEY);
+   if(old && !confirm('Esta cuenta todavía no tiene registros en la nube. ¿Quieres subir los registros guardados en este navegador? Pulsa Cancelar para comenzar con una cuenta nueva.')){
+     state=structuredClone(seed);state.debtors=[];state.debtorMoves=[];state.billPayments=[];
+   }
+   const result2=await client.from('finance_profiles').upsert({user_id:uid,data:state},{onConflict:'user_id'});
+   if(result2.error){authError('No se pudo crear tu registro: '+result2.error.message);return;}
+ }
+ ready=true;gate.hidden=true;status('✓ Sincronizado');loadSettings();render();
+}
+async function boot(){
+ if(!window.supabase?.createClient){authError('No se pudo cargar Supabase. Comprueba tu conexión a Internet.');return;}
+ client=window.supabase.createClient(PROJECT_URL,PUBLIC_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+ const {data,error}=await client.auth.getSession();if(error){authError(error.message);return;}
+ if(data.session)await enter(data.session);
+ client.auth.onAuthStateChange((event,session)=>{if(event==='SIGNED_OUT'){uid=null;ready=false;gate.hidden=false;status('Sesión cerrada');}else if(event==='SIGNED_IN'&&session&&!ready){setTimeout(()=>enter(session),0);}});
+}
+send.onclick=async()=>{
+ const email=document.getElementById('authEmail').value.trim();if(!email){authError('Escribe tu correo.');return;}
+ send.disabled=true;authError('Enviando enlace...');
+ const {error}=await client.auth.signInWithOtp({email,options:{emailRedirectTo:location.origin+location.pathname}});
+ send.disabled=false;authError(error?'Error: '+error.message:'Revisa tu correo y abre el enlace de acceso.');
+};
+const logout=document.createElement('button');logout.className='secondary';logout.textContent='Salir';logout.style.marginLeft='8px';logout.onclick=async()=>{await client.auth.signOut();location.reload()};badge.after(logout);
+window.addEventListener('online',()=>{if(ready)persist()});
+boot();
+})();
 </script></body></html>
