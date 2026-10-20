@@ -326,7 +326,7 @@ function renderArchive(){
  const kinds={Goals:'Ahorros',Loans:'Préstamos',Bills:'Pagos mensuales',Debtors:'Otros deudores'};
  const lists={Goals:[{id:'moto',name:state.motoVisual?.name||'Honda NX190 + protección'},...(state.extraGoals||[])],Loans:[{id:'brother',name:state.brotherLabel||'Deuda hermano'},...(state.loans||[])],Bills:state.bills||[],Debtors:state.debtors||[]};
  const entries=Object.keys(kinds).flatMap(kind=>(state['archived'+kind]||[]).map(id=>({kind,id,item:lists[kind].find(x=>String(x.id)===id)})));
- box.innerHTML='<h3>📦 Elementos eliminados (recuperables)</h3>'+(entries.map(x=>`<div class="record">${e(kinds[x.kind])}: ${e(x.item?.name||'Elemento anterior')} <button class="secondary" onclick="restoreFinanceItem('${x.kind}',${JSON.stringify(x.id)})">Restaurar</button> <button class="danger" onclick="deleteArchivedForever('${x.kind}',${JSON.stringify(x.id)})">🗑 Borrar</button></div>`).join('')||'<p class="muted">No hay elementos eliminados.</p>');
+ box.innerHTML='<h3>📦 Elementos eliminados (recuperables)</h3>'+(entries.map(x=>`<div class="record">${e(kinds[x.kind])}: ${e(x.item?.name||'Elemento anterior')} <button class="secondary" data-trash-action="restore" data-kind="${x.kind}" data-item-id="${e(x.id)}">Restaurar</button> <button class="danger" data-trash-action="delete" data-kind="${x.kind}" data-item-id="${e(x.id)}">🗑 Borrar</button></div>`).join('')||'<p class="muted">No hay elementos eliminados.</p>');
 }
 const archive=document.createElement('div');archive.id='financeArchive';archive.className='card';document.getElementById('ajustes')?.appendChild(archive);
 
@@ -432,7 +432,7 @@ function renderTrash(){
   const name=x.item.name||x.item.description||x.item.type||'Registro';
   return `<div class="trash-row"><div><b>${safe(labels[x.type]||x.type)}: ${safe(name)}</b><small>${x.item.amount!=null?fmt(x.item.amount)+' · ':''}Eliminado: ${new Date(x.deletedAt).toLocaleString('es-PE')}</small></div><div class="actions"><button class="primary" onclick="restoreTrash(${JSON.stringify(x.trashId)})">↶ Restaurar</button><button class="danger" onclick="deleteTrashForever(${JSON.stringify(x.trashId)})">🗑 Borrar</button></div></div>`;
  }).join('');
- html+=archived.map(x=>`<div class="trash-row"><div><b>${safe(x.label)}: ${safe(x.name)}</b><small>Carpeta archivada con su historial</small></div><div class="actions"><button class="primary" onclick="restoreFinanceItem('${x.kind}',${JSON.stringify(x.id)})">↶ Restaurar</button><button class="danger" onclick="deleteArchivedForever('${x.kind}',${JSON.stringify(x.id)})">🗑 Borrar</button></div></div>`).join('');
+ html+=archived.map(x=>`<div class="trash-row"><div><b>${safe(x.label)}: ${safe(x.name)}</b><small>Carpeta archivada con su historial</small></div><div class="actions"><button class="primary" data-trash-action="restore" data-kind="${x.kind}" data-item-id="${safe(x.id)}">↶ Restaurar</button><button class="danger" data-trash-action="delete" data-kind="${x.kind}" data-item-id="${safe(x.id)}">🗑 Borrar</button></div></div>`).join('');
  box.innerHTML=html||'<p class="muted">La papelera está vacía. No tienes elementos eliminados.</p>';
 }
  function confirmPermanent(name){
@@ -489,6 +489,45 @@ const settingsTip=document.createElement('p');settingsTip.className='muted';sett
 document.querySelector('#ahorro .card')?.appendChild(settingsTip);
 window.resetAll=function(){alert('Por seguridad, el borrado total desde la aplicación está deshabilitado. Descarga un respaldo antes de cualquier restablecimiento.')};
 render();
+})();
+</script>
+
+<script>
+/* V12: direct delegated actions for BOTH trash views, with UI update and confirmation. */
+(function(){
+ const names={Goals:'meta de ahorro',Loans:'préstamo',Bills:'pago mensual',Debtors:'deudor'};
+ const collections={Goals:'extraGoals',Loans:'loans',Bills:'bills',Debtors:'debtors'};
+ document.addEventListener('click',function(ev){
+   const button=ev.target.closest('button[data-trash-action]');
+   if(!button)return;
+   ev.preventDefault();ev.stopPropagation();
+   const action=button.dataset.trashAction,kind=button.dataset.kind,id=String(button.dataset.itemId||'');
+   if(!names[kind]||!id)return alert('No se pudo identificar el registro.');
+   const archiveKey='archived'+kind;
+   state[archiveKey]??=[];
+   if(!state[archiveKey].some(x=>String(x)===id)){
+     render();return alert('Este elemento ya no está en la papelera.');
+   }
+   if(action==='restore'){
+     state[archiveKey]=state[archiveKey].filter(x=>String(x)!==id);
+     persist();render();
+     return;
+   }
+   if(action!=='delete')return;
+   if((kind==='Goals'&&id==='moto')||(kind==='Loans'&&id==='brother')){
+     return alert('Esta carpeta histórica está protegida contra el borrado definitivo. Puedes restaurarla.');
+   }
+   const collection=collections[kind],item=(state[collection]||[]).find(x=>String(x.id)===id);
+   if(!item)return alert('No se encontró el registro original. Puedes restaurarlo o revisar tu respaldo.');
+   if(!confirm('¿Borrar definitivamente «'+(item.name||names[kind])+'»? Esta acción NO se puede deshacer.'))return;
+   if(prompt('Escribe BORRAR para confirmar:')!=='BORRAR')return;
+   state[collection]=state[collection].filter(x=>String(x.id)!==id);
+   if(kind==='Loans')state.loanMoves=(state.loanMoves||[]).filter(x=>String(x.loanId)!==id);
+   if(kind==='Debtors')state.debtorMoves=(state.debtorMoves||[]).filter(x=>String(x.debtorId)!==id);
+   // Do not alter cash ledger or recorded savings/bill payments during folder removal.
+   state[archiveKey]=state[archiveKey].filter(x=>String(x)!==id);
+   persist();render();
+ },true);
 })();
 </script>
 </body></html>
