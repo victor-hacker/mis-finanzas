@@ -11,7 +11,7 @@
 <section id="ajustes" class="section"><div class="card"><h3>Configuración inicial</h3><p class="muted">Escribe solo tu efectivo y dinero bancario que tienes hoy; no incluyas lo que te debe tu hermano ni el ahorro.</p><div class="fields"><label>Dinero disponible inicial (S/)<input type="number" id="initialCash" step="0.01"></label><label>Saldo inicial hermano (S/)<input type="number" id="initialDebt" step="0.01"></label><label>Ahorro inicial moto (S/)<input type="number" id="initialSaving" step="0.01"></label><label>Meta Honda NX190 + protección (S/)<input type="number" id="target" step="0.01"></label></div><p><button class="primary" onclick="saveSettings()">Guardar configuración</button></p></div><div class="two"><div class="card"><h3>Respaldo de tus datos</h3><p class="muted">Se guarda en este navegador. Exporta un archivo JSON de vez en cuando para no perder tus registros.</p><div class="actions"><button class="primary" onclick="exportData()">↓ Exportar respaldo</button><label style="display:inline-block"><input type="file" id="importFile" accept="application/json" style="display:none" onchange="importData(event)"><button class="secondary" onclick="document.getElementById('importFile').click()">↑ Importar respaldo</button></label></div></div><div class="card"><h3>Importante</h3><p>Esta aplicación funciona sin cuenta ni servidor. Los datos quedan en el navegador de este equipo. Si borras sus datos o cambias de dispositivo, necesitas importar tu respaldo.</p><button class="danger" onclick="resetAll()">Restablecer todos los datos</button></div></div></section></main>
 <dialog id="moveDialog"><div class="row"><h3>Nuevo movimiento</h3><button class="secondary" onclick="document.getElementById('moveDialog').close()">✕</button></div><form id="moveForm" class="fields"><label>Fecha<input name="date" type="date" required></label><label>Tipo<select name="type" id="moveType"><option>Ingreso</option><option>Gasto</option><option>Ahorro</option><option>Retiro ahorro</option><option>Préstamo hermano</option><option>Cobro hermano</option><option>Gasto desde hermano</option></select></label><label>Importe (S/)<input name="amount" type="number" step="0.01" min="0.01" required></label><label>Categoría<select name="category" id="categorySelect"></select></label><label style="grid-column:span 2">Descripción<input name="description" placeholder="Ej. Ingreso de octubre, comida, Internet" required></label><label>Medio<select name="method"><option>Yape</option><option>Transferencia</option><option>Plin</option><option>Efectivo</option><option>Otro</option></select></label><label>Comprobante (imagen o PDF)<input name="proof" type="file" accept="image/*,application/pdf"></label><div style="grid-column:1/-1"><button class="primary" type="submit">Guardar movimiento</button></div></form></dialog>
 <script>
-const KEY='mis_finanzas_nx190_v2';const cats=['Alimentación','Transporte','Vivienda','Servicios','Salud','Educación','Ropa','Mascotas','Entretenimiento','Suscripciones','Urgencias','Otros'];const palette=['#2bc8a4','#ed719e','#43a5dc','#9980ec','#f2b95a','#63b9ba','#ef8e73','#8c9de4','#88be72','#d998c3','#d6a05d','#8494a3'];const seed={cash:0,debt:5198.97,saving:20.50,target:18000,movements:[],budgets:{},bills:[{id:1001,name:'ChatGPT',amount:80,day:22},{id:1002,name:'Adobe Creative',amount:50,day:5},{id:1003,name:'Internet',amount:90,day:2},{id:1004,name:'Gym',amount:100,day:24}]};let state;try{state=JSON.parse(localStorage.getItem(KEY))||structuredClone(seed)}catch(e){state=structuredClone(seed)};state={...structuredClone(seed),...state};if(Number(state.saving)===20){state.saving=20.50;localStorage.setItem(KEY,JSON.stringify(state))}state.debtors??=[];state.debtorMoves??=[];state.billPayments??=[];function persist(){localStorage.setItem(KEY,JSON.stringify(state))}function fmt(v){return 'S/ '+Number(v||0).toLocaleString('es-PE',{minimumFractionDigits:2,maximumFractionDigits:2})}function monthKey(d){return String(d||'').slice(0,7)}function monthLabel(key){return new Date(key+'-01T12:00:00').toLocaleDateString('es-PE',{month:'short',year:'2-digit'})}function total(type){return state.movements.filter(x=>x.type===type).reduce((a,x)=>a+Number(x.amount),0)}function balances(){return{cash:Number(state.cash)+total('Ingreso')-total('Gasto')-total('Ahorro')+total('Retiro ahorro')-total('Préstamo hermano')+total('Cobro hermano'),debt:Number(state.debt)+total('Préstamo hermano')-total('Cobro hermano')-total('Gasto desde hermano'),saving:Number(state.saving)+total('Ahorro')-total('Retiro ahorro')}}function sums(key,type){return state.movements.filter(x=>monthKey(x.date)===key&&x.type===type).reduce((a,x)=>a+Number(x.amount),0)}function esc(t){return String(t??'').replace(/[&<>"']/g,x=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[x]))}function go(page){document.querySelectorAll('.section').forEach(x=>x.classList.toggle('active',x.id===page));document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('active',x.dataset.page===page));const names={resumen:'Hola, estas son tus finanzas 👋',movimientos:'Tus movimientos',ahorro:'Tu meta de ahorro',deudas:'Dinero que te debe tu hermano',deudores:'Otros deudores',presupuestos:'Tus presupuestos',pagos:'Tus pagos mensuales',proyeccion:'Tu futuro financiero',ajustes:'Configuración y respaldos'};document.getElementById('heading').textContent=names[page];render();scrollTo(0,0)}document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>go(b.dataset.page));function monthOptions(){let m=document.getElementById('month');let selected=m.value||new Date().toISOString().slice(0,7);m.innerHTML='';for(let i=0;i<18;i++){let d=new Date();d.setDate(1);d.setMonth(d.getMonth()-i);let key=d.toISOString().slice(0,7);m.innerHTML+=`<option value="${key}">${monthLabel(key)}</option>`}m.value=selected;if(!m.value)m.selectedIndex=0}document.getElementById('month').onchange=render;
+const KEY='mis_finanzas_nx190_v2';const cats=['Alimentación','Transporte','Vivienda','Servicios','Salud','Educación','Ropa','Mascotas','Entretenimiento','Suscripciones','Urgencias','Otros'];const palette=['#2bc8a4','#ed719e','#43a5dc','#9980ec','#f2b95a','#63b9ba','#ef8e73','#8c9de4','#88be72','#d998c3','#d6a05d','#8494a3'];const seed={cash:0,debt:5198.97,saving:0,target:18000,movements:[],budgets:{},bills:[{id:1001,name:'ChatGPT',amount:80,day:22},{id:1002,name:'Adobe Creative',amount:50,day:5},{id:1003,name:'Internet',amount:90,day:2},{id:1004,name:'Gym',amount:100,day:24}]};let state;try{state=JSON.parse(localStorage.getItem(KEY))||structuredClone(seed)}catch(e){state=structuredClone(seed)};state={...structuredClone(seed),...state};state.debtors??=[];state.debtorMoves??=[];state.billPayments??=[];function persist(){localStorage.setItem(KEY,JSON.stringify(state))}function fmt(v){return 'S/ '+Number(v||0).toLocaleString('es-PE',{minimumFractionDigits:2,maximumFractionDigits:2})}function monthKey(d){return String(d||'').slice(0,7)}function monthLabel(key){return new Date(key+'-01T12:00:00').toLocaleDateString('es-PE',{month:'short',year:'2-digit'})}function total(type){return state.movements.filter(x=>x.type===type).reduce((a,x)=>a+Number(x.amount),0)}function balances(){return{cash:Number(state.cash)+total('Ingreso')-total('Gasto')-total('Ahorro')+total('Retiro ahorro')-total('Préstamo hermano')+total('Cobro hermano'),debt:Number(state.debt)+total('Préstamo hermano')-total('Cobro hermano')-total('Gasto desde hermano'),saving:Number(state.saving)+total('Ahorro')-total('Retiro ahorro')}}function sums(key,type){return state.movements.filter(x=>monthKey(x.date)===key&&x.type===type).reduce((a,x)=>a+Number(x.amount),0)}function esc(t){return String(t??'').replace(/[&<>"']/g,x=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[x]))}function go(page){document.querySelectorAll('.section').forEach(x=>x.classList.toggle('active',x.id===page));document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('active',x.dataset.page===page));const names={resumen:'Hola, estas son tus finanzas 👋',movimientos:'Tus movimientos',ahorro:'Tu meta de ahorro',deudas:'Dinero que te debe tu hermano',deudores:'Otros deudores',presupuestos:'Tus presupuestos',pagos:'Tus pagos mensuales',proyeccion:'Tu futuro financiero',ajustes:'Configuración y respaldos'};document.getElementById('heading').textContent=names[page];render();scrollTo(0,0)}document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>go(b.dataset.page));function monthOptions(){let m=document.getElementById('month');let selected=m.value||new Date().toISOString().slice(0,7);m.innerHTML='';for(let i=0;i<18;i++){let d=new Date();d.setDate(1);d.setMonth(d.getMonth()-i);let key=d.toISOString().slice(0,7);m.innerHTML+=`<option value="${key}">${monthLabel(key)}</option>`}m.value=selected;if(!m.value)m.selectedIndex=0}document.getElementById('month').onchange=render;
 function render(){let b=balances(),key=document.getElementById('month').value||new Date().toISOString().slice(0,7),expenses=sums(key,'Gasto'),income=sums(key,'Ingreso'),saved=sums(key,'Ahorro')-sums(key,'Retiro ahorro');let cards=[['💳','Dinero disponible',b.cash],['🤝','Me debe mi hermano',b.debt],['🏍️','Ahorro Honda NX190 + protección',b.saving],['📈','Ingresos del mes',income],['🧾','Gastos del mes',expenses],['🌱','Ahorrado este mes',saved],['📆','Pagos previstos / mes',state.bills.reduce((a,x)=>a+Number(x.amount),0)],['🎯','Falta para la meta',Math.max(0,state.target-b.saving)]];document.getElementById('kpis').innerHTML=cards.map(([icon,label,value])=>`<div class="card kpi"><div class="bubble">${icon}</div><div><div class="muted">${label}</div><strong>${fmt(value)}</strong></div></div>`).join('');let bycat=cats.map((cat,i)=>({cat,i,amount:state.movements.filter(x=>monthKey(x.date)===key&&x.type==='Gasto'&&x.category===cat).reduce((a,x)=>a+Number(x.amount),0)})).filter(x=>x.amount>0).sort((a,b)=>b.amount-a.amount);document.getElementById('categoryBars').innerHTML=bycat.length?bycat.map(x=>`<div class="catrow"><b>${esc(x.cat)}</b><div class="bar"><div style="width:${Math.max(1,x.amount/expenses*100)}%;background:${palette[x.i]}"></div></div><span>${fmt(x.amount)}</span></div>`).join(''):'<p class="muted">Aún no hay gastos registrados este mes.</p>';let months=[];for(let i=5;i>=0;i--){let d=new Date();d.setDate(1);d.setMonth(d.getMonth()-i);months.push(d.toISOString().slice(0,7))}let max=Math.max(1,...months.flatMap(k=>[sums(k,'Ingreso'),sums(k,'Gasto')]));document.getElementById('chart').innerHTML=months.map(k=>`<div class="chartcol"><div class="sticks"><div class="stick" title="Ingresos ${fmt(sums(k,'Ingreso'))}" style="height:${sums(k,'Ingreso')/max*100}%;background:#2bc8a4"></div><div class="stick" title="Gastos ${fmt(sums(k,'Gasto'))}" style="height:${sums(k,'Gasto')/max*100}%;background:#ed719e"></div></div><span>${monthLabel(k)}</span></div>`).join('');let percent=Math.max(0,Math.min(100,b.saving/state.target*100||0));let goal=`<div class="row"><strong style="font-size:29px">${fmt(b.saving)}</strong><span class="muted">de ${fmt(state.target)}</span></div><div class="bar"><div style="width:${percent}%"></div></div><div class="row"><span class="pill">${percent.toFixed(1)}% completado</span><span class="muted">Faltan ${fmt(Math.max(0,state.target-b.saving))}</span></div>`;document.getElementById('goalSummary').innerHTML=goal;document.getElementById('goalLarge').innerHTML=goal+'<p class="muted">Cada aporte se actualiza automáticamente.</p>';let recent=[...state.movements].sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id).slice(0,5);document.getElementById('recent').innerHTML=recent.length?recent.map(x=>`<div class="row" style="padding:10px 0;border-bottom:1px solid var(--line)"><span>${esc(x.description)}<br><small>${esc(x.date)}</small></span><strong class="${x.type==='Ingreso'||x.type==='Cobro hermano'?'in':'out'}">${fmt(x.amount)}</strong></div>`).join(''):'<p class="muted">Aún no hay movimientos. Añade el primero.</p>';document.getElementById('debtSummary').innerHTML=`<p style="font-size:35px;font-weight:800;margin:0 0 14px">${fmt(b.debt)}</p><p class="muted">Saldo inicial: ${fmt(state.debt)} · Nuevos préstamos: ${fmt(total('Préstamo hermano'))} · Cobros y descuentos: ${fmt(total('Cobro hermano')+total('Gasto desde hermano'))}</p>`;renderRows();renderBudgets(key);renderBills();renderForecast();renderDebtTables();renderDebtors();renderBillHistory();}
 function renderRows(){let rows=[...state.movements].sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id);document.getElementById('movementRows').innerHTML=rows.length?rows.map(x=>`<tr><td>${esc(x.date)}</td><td><span class="pill">${esc(x.type)}</span></td><td>${esc(x.category)}</td><td>${esc(x.description)}</td><td><b>${fmt(x.amount)}</b></td><td><button class="danger" onclick="removeMove(${x.id})">Eliminar</button></td></tr>`).join(''):'<tr><td colspan="6" class="muted">No hay movimientos todavía.</td></tr>'}function openMove(type='Ingreso'){let form=document.getElementById('moveForm');form.reset();form.elements.date.value=new Date().toLocaleDateString('en-CA');form.elements.type.value=type;document.getElementById('moveDialog').showModal()}document.getElementById('categorySelect').innerHTML=cats.map(x=>`<option>${x}</option>`).join('');document.getElementById('moveForm').onsubmit=e=>{e.preventDefault();let d=Object.fromEntries(new FormData(e.target));let file=d.proof;delete d.proof;let amount=Number(d.amount);if(!Number.isFinite(amount)||amount<=0)return alert('Escribe un importe válido.');let save=(proof)=>{state.movements.push({...d,proof,amount,id:Date.now()+Math.floor(Math.random()*1000)});try{persist()}catch(e){state.movements.pop();return alert('El comprobante es demasiado grande para el almacenamiento local. Prueba con una imagen más pequeña.')}document.getElementById('moveDialog').close();render()};if(file&&file.size){if(file.size>1200000)return alert('Adjunta una imagen o PDF menor a 1.2 MB.');let r=new FileReader();r.onload=()=>save({name:file.name,data:r.result});r.readAsDataURL(file)}else save(null)};function removeMove(id){if(confirm('¿Eliminar este movimiento?')){state.movements=state.movements.filter(x=>x.id!==id);persist();render()}}
 function renderBudgets(key){document.getElementById('budgetList').innerHTML=cats.map((cat,i)=>{let spent=state.movements.filter(x=>x.type==='Gasto'&&x.category===cat&&monthKey(x.date)===key).reduce((a,x)=>a+Number(x.amount),0),limit=Number(state.budgets[cat]||0),pct=limit?spent/limit*100:0;return `<div class="row" style="padding:13px 0;border-bottom:1px solid var(--line)"><div style="min-width:180px"><b>${esc(cat)}</b><br><small>${fmt(spent)} gastados</small></div><div style="flex:1;min-width:100px"><div class="bar"><div style="width:${Math.min(100,pct)}%;background:${pct>100?'#ed719e':pct>80?'#e7ad58':palette[i]}"></div></div><small>${limit?(pct.toFixed(0)+'% usado'+(pct>100?' · EXCEDIDO':pct>80?' · Cerca del límite':'')):'Sin límite'}</small></div><label style="width:125px">Límite (S/)<input class="budgetInput" data-cat="${esc(cat)}" type="number" min="0" step="0.01" value="${limit}"></label></div>`}).join('')}function saveBudgets(){document.querySelectorAll('.budgetInput').forEach(x=>state.budgets[x.dataset.cat]=Math.max(0,Number(x.value)||0));persist();render();alert('Presupuestos guardados.')}
@@ -345,4 +345,118 @@ const previous=render;render=function(){ensure();try{previous()}catch(err){conso
 const heading=document.querySelector('#deudas .card h3');if(heading)heading.textContent='🤝 Mis deudas y préstamos por cobrar';
 render();
 })();
-</script></body></html>
+</script>
+<style>
+#trashList .trash-row{border:1px solid var(--line);border-radius:12px;padding:15px;margin:10px 0;display:flex;justify-content:space-between;gap:14px;align-items:center;flex-wrap:wrap}
+#trashList .trash-row small{display:block;margin-top:5px;color:var(--muted)}
+</style>
+<script>
+/* V8: saldos iniciales editables, papelera recuperable y confirmación reforzada. */
+(function(){
+const safe=esc;
+function ensureTrash(){state.trash??=[];state.archivedGoals??=[];state.archivedLoans??=[];state.archivedBills??=[];state.archivedDebtors??=[];}
+const nav=document.getElementById('nav'),main=document.querySelector('main');
+const trashNav=document.createElement('button');trashNav.dataset.page='papelera';trashNav.dataset.icon='🗑';trashNav.textContent='🗑　Papelera';nav.insertBefore(trashNav,nav.querySelector('[data-page="ajustes"]'));
+const section=document.createElement('section');section.id='papelera';section.className='section';
+section.innerHTML='<div class="card"><div class="row"><div><h3>🗑️ Papelera de elementos eliminados</h3><p class="muted">Aquí puedes recuperar movimientos, pagos, deudores, préstamos y metas eliminados. Eliminar no significa perderlos definitivamente.</p></div><button class="secondary" onclick="exportData()">↓ Descargar respaldo</button></div><div id="trashList"></div></div>';
+main.appendChild(section);
+const oldGo=go;go=function(page){oldGo(page);if(page==='papelera'){document.getElementById('heading').textContent='Tu papelera';document.getElementById('subtitle').textContent='Recupera elementos eliminados accidentalmente.';renderTrash()}};
+trashNav.onclick=()=>go('papelera');
+function approve(label){
+ if(!confirm('¿Enviar '+label+' a la papelera? Podrás restaurarlo después.'))return false;
+ return prompt('Para confirmar, escribe ELIMINAR en mayúsculas:')==='ELIMINAR';
+}
+function stash(type,item,extra={}){
+ ensureTrash();
+ state.trash.push({trashId:'trash_'+Date.now()+'_'+Math.random().toString(36).slice(2),type,item:structuredClone(item),extra,deletedAt:new Date().toISOString()});
+}
+function softRemove(type,collection,id,label,extra={}){
+ const item=(state[collection]||[]).find(x=>String(x.id)===String(id));if(!item)return;
+ if(!approve(label))return;
+ stash(type,item,extra);
+ state[collection]=state[collection].filter(x=>String(x.id)!==String(id));
+ persist();render();
+}
+window.removeMove=function(id){softRemove('movement','movements',id,'este movimiento')};
+window.removeDebtorMove=function(id){softRemove('debtorMove','debtorMoves',id,'este movimiento de deudor')};
+window.removeBillPayment=function(id){softRemove('billPayment','billPayments',id,'este pago mensual')};
+window.removeBill=function(id){
+ const item=state.bills.find(x=>String(x.id)===String(id));if(!item||!approve('este recordatorio'))return;
+ stash('bill',item);state.bills=state.bills.filter(x=>String(x.id)!==String(id));
+ persist();render();
+};
+window.deleteDebtor=function(id){
+ const item=state.debtors.find(x=>String(x.id)===String(id));if(!item||!approve('este deudor y su historial'))return;
+ const history=state.debtorMoves.filter(x=>String(x.debtorId)===String(id));
+ stash('debtor',item,{history});
+ state.debtors=state.debtors.filter(x=>String(x.id)!==String(id));
+ state.debtorMoves=state.debtorMoves.filter(x=>String(x.debtorId)!==String(id));
+ persist();render();
+};
+window.archiveFinanceItem=function(kind,id){
+ const names={Goals:'meta de ahorro',Loans:'préstamo',Bills:'pago mensual',Debtors:'deudor'};
+ if(!names[kind]||!approve('este '+names[kind]))return;
+ const key='archived'+kind;state[key]??=[];if(!state[key].includes(String(id)))state[key].push(String(id));
+ persist();render();
+};
+window.editGoalInitial=function(id){
+ const isMoto=String(id)==='moto';
+ const goal=isMoto?null:(state.extraGoals||[]).find(g=>String(g.id)===String(id));
+ if(!isMoto&&!goal)return;
+ const current=isMoto?Number(state.saving||0):Number(goal.initial||0);
+ const input=prompt('Saldo INICIAL de esta meta (S/). No crea un aporte ni modifica el historial:',current.toFixed(2));
+ if(input===null)return;
+ if(!input.trim()||!Number.isFinite(Number(input))||Number(input)<0)return alert('Introduce un monto válido mayor o igual a cero.');
+ if(!confirm('¿Guardar saldo inicial de S/ '+Number(input).toFixed(2)+'? Se mantendrán todos los aportes y retiros.'))return;
+ if(isMoto)state.saving=Number(input);else goal.initial=Number(input);
+ persist();loadSettings();render();
+};
+function addInitialButtons(){
+ document.querySelectorAll('#extraGoals .fin-detail').forEach((folder,index)=>{
+  const ids=[{id:'moto'},...(state.extraGoals||[])].filter(g=>!(state.archivedGoals||[]).includes(String(g.id)));
+  const goal=ids[index];if(!goal)return;
+  const actions=folder.querySelector('.actions');if(!actions)return;
+  const b=document.createElement('button');b.className='secondary';b.textContent='✎ Editar ahorro inicial';b.onclick=()=>window.editGoalInitial(goal.id);actions.insertBefore(b,actions.children[2]||null);
+ });
+}
+function renderTrash(){
+ ensureTrash();const box=document.getElementById('trashList');if(!box)return;
+ const labels={movement:'Movimiento',debtorMove:'Movimiento de deudor',billPayment:'Pago registrado',bill:'Pago mensual',debtor:'Deudor'};
+ const archived=[
+  ['Goals','Metas de ahorro',[{id:'moto',name:state.motoVisual?.name||'Honda NX190 + protección'},...(state.extraGoals||[])]],
+  ['Loans','Préstamos',[{id:'brother',name:state.brotherLabel||'Mi hermano'},...(state.loans||[])]],
+  ['Bills','Pagos mensuales',state.bills||[]],
+  ['Debtors','Deudores',state.debtors||[]]
+ ].flatMap(([kind,label,items])=>(state['archived'+kind]||[]).map(id=>({kind,id,label,name:items.find(x=>String(x.id)===String(id))?.name||'Registro anterior'})));
+ let html=state.trash.slice().reverse().map(x=>{
+  const name=x.item.name||x.item.description||x.item.type||'Registro';
+  return `<div class="trash-row"><div><b>${safe(labels[x.type]||x.type)}: ${safe(name)}</b><small>${x.item.amount!=null?fmt(x.item.amount)+' · ':''}Eliminado: ${new Date(x.deletedAt).toLocaleString('es-PE')}</small></div><button class="primary" onclick="restoreTrash(${JSON.stringify(x.trashId)})">↶ Restaurar</button></div>`;
+ }).join('');
+ html+=archived.map(x=>`<div class="trash-row"><div><b>${safe(x.label)}: ${safe(x.name)}</b><small>Carpeta archivada con su historial</small></div><button class="primary" onclick="restoreFinanceItem('${x.kind}',${JSON.stringify(x.id)})">↶ Restaurar</button></div>`).join('');
+ box.innerHTML=html||'<p class="muted">La papelera está vacía. No tienes elementos eliminados.</p>';
+}
+window.restoreTrash=function(id){
+ ensureTrash();const i=state.trash.findIndex(x=>x.trashId===id);if(i<0)return;
+ const t=state.trash[i],collections={movement:'movements',debtorMove:'debtorMoves',billPayment:'billPayments',bill:'bills',debtor:'debtors'};
+ const collection=collections[t.type];if(!collection)return;
+ state[collection]??=[];
+ if(state[collection].some(x=>String(x.id)===String(t.item.id)))return alert('Ya existe un registro con ese identificador. No se restauró para evitar duplicados.');
+ state[collection].push(t.item);
+ if(t.type==='debtor'&&t.extra?.history){
+  state.debtorMoves??=[];
+  for(const m of t.extra.history)if(!state.debtorMoves.some(x=>String(x.id)===String(m.id)))state.debtorMoves.push(m);
+ }
+ state.trash.splice(i,1);persist();render();renderTrash();
+};
+const prevRender=render;render=function(){ensureTrash();prevRender();addInitialButtons();renderTrash()};
+const oldRestore=window.restoreFinanceItem;
+window.restoreFinanceItem=function(kind,id){oldRestore(kind,id);renderTrash()};
+const initialLabel=document.getElementById('initialSaving')?.closest('label');
+if(initialLabel)initialLabel.style.display='';
+const settingsTip=document.createElement('p');settingsTip.className='muted';settingsTip.textContent='Puedes editar el saldo inicial de cada meta desde Ahorro → abrir carpeta → Editar ahorro inicial. No se añade ningún monto automáticamente.';
+document.querySelector('#ahorro .card')?.appendChild(settingsTip);
+window.resetAll=function(){alert('Por seguridad, el borrado total desde la aplicación está deshabilitado. Descarga un respaldo antes de cualquier restablecimiento.')};
+render();
+})();
+</script>
+</body></html>
