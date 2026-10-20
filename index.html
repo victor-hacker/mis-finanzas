@@ -306,7 +306,7 @@ function ensure(){state.movements??=[];state.bills??=[];state.billPayments??=[];
 function showSavings(){ensure();const el=document.getElementById('extraGoals');if(!el)return;
 const all=[{id:'moto',name:state.motoVisual?.name||'Honda NX190 + protección',target:Number(state.target)||18000,image:state.motoVisual?.image,legacy:true},...state.extraGoals].filter(g=>!((state.archivedGoals||[]).includes(String(g.id))));
 el.innerHTML=all.map(g=>{const id=String(g.id),transactions=state.movements.filter(m=>['Ahorro','Retiro ahorro'].includes(m.type)&&String(m.goalId||'moto')===id).sort((a,b)=>b.date.localeCompare(a.date));const bal=g.legacy?balances().saving:Number(g.initial||0)+transactions.reduce((v,m)=>v+(m.type==='Ahorro'?Number(m.amount):-Number(m.amount)),0);const pct=g.target?Math.max(0,Math.min(100,bal/g.target*100)):0;
-return `<details class="fin-detail"><summary><div><h3>📁 ${e(g.name)}</h3><div class="fin-big">${f(bal)}</div><small class="muted">Meta: ${f(g.target)} · ${pct.toFixed(1)}% completado</small></div>${g.image?`<img class="fin-cover" src="${g.image}" alt="Imagen de la meta">`:''}</summary><div class="fin-detail-body"><div class="bar"><div style="width:${pct}%"></div></div><p class="muted">Te faltan ${f(Math.max(0,g.target-bal))} para completar esta meta.</p><div class="actions"><button class="primary" onclick="addToGoal('${e(id)}','Ahorro')">＋ Añadir dinero</button><button class="secondary" onclick="addToGoal('${e(id)}','Retiro ahorro')">− Retirar dinero</button><button class="secondary" onclick="renameGoal('${e(id)}')">✎ Editar nombre y meta</button><button class="secondary" onclick="goalImage('${e(id)}')">📷 ${g.image?'Cambiar imagen':'Añadir imagen opcional'}</button>${g.image?`<button class="secondary" onclick="removeGoalImage('${e(id)}')">Quitar imagen</button>`:''}<button class="danger" onclick="archiveFinanceItem('Goals','${e(id)}')">Eliminar meta</button></div><h3>Historial de esta meta</h3>${transactions.map(m=>`<div class="record">${e(m.date)} · ${e(m.type)} · <b>${f(m.amount)}</b><small>${e(m.description||'')}</small></div>`).join('')||'<p class="muted">No hay aportes ni retiros registrados todavía. El saldo inicial se conserva.</p>'}</div></details>`}).join('');}
+return `<details class="fin-detail"><summary><div><h3>📁 ${e(g.name)}</h3><div class="fin-big">${f(bal)}</div><small class="muted">Meta: ${f(g.target)} · ${pct.toFixed(1)}% completado</small></div>${g.image?`<img class="fin-cover" src="${g.image}" alt="Imagen de la meta">`:''}</summary><div class="fin-detail-body"><div class="bar"><div style="width:${pct}%"></div></div><p class="muted">Te faltan ${f(Math.max(0,g.target-bal))} para completar esta meta.</p><div class="actions"><button class="primary" onclick="addToGoal('${e(id)}','Ahorro')">＋ Añadir dinero</button><button class="secondary" onclick="addToGoal('${e(id)}','Retiro ahorro')">− Retirar dinero</button><button class="secondary" onclick="editGoalInitial('${e(id)}')">✎ Editar ahorro inicial</button><button class="secondary" onclick="renameGoal('${e(id)}')">✎ Editar nombre y meta</button><button class="secondary" onclick="goalImage('${e(id)}')">📷 ${g.image?'Cambiar imagen':'Añadir imagen opcional'}</button>${g.image?`<button class="secondary" onclick="removeGoalImage('${e(id)}')">Quitar imagen</button>`:''}<button class="danger" onclick="archiveFinanceItem('Goals','${e(id)}')">Eliminar meta</button></div><h3>Historial de esta meta</h3>${transactions.map(m=>`<div class="record">${e(m.date)} · ${e(m.type)} · <b>${f(m.amount)}</b><small>${e(m.description||'')}</small></div>`).join('')||'<p class="muted">No hay aportes ni retiros registrados todavía. El saldo inicial se conserva.</p>'}</div></details>`}).join('');}
 function showLoans(){ensure();const el=document.getElementById('loanFolders');if(!el)return;const all=[{id:'brother',name:state.brotherLabel||'Deuda hermano',initial:Number(state.debt)||0,legacy:true},...state.loans].filter(g=>!((state.archivedLoans||[]).includes(String(g.id))));el.innerHTML=all.map(g=>{const id=String(g.id),tx=g.legacy?state.movements.filter(m=>['Préstamo hermano','Cobro hermano','Gasto desde hermano'].includes(m.type)):(state.loanMoves||[]).filter(m=>String(m.loanId)===id);const balance=g.legacy?balances().debt:Number(g.initial||0)+tx.reduce((v,m)=>v+(m.type==='Préstamo'?Number(m.amount):-Number(m.amount)),0);return `<details class="fin-detail"><summary><div><h3>📁 ${e(g.name)}</h3><div class="fin-big">${f(balance)}</div><small class="muted">${tx.length} movimientos · Ver historial individual</small></div></summary><div class="fin-detail-body"><p class="muted">Saldo inicial: ${f(g.initial)}</p><div class="actions"><button class="primary" onclick="loanAction('${e(id)}','Préstamo')">＋ Añadir préstamo</button><button class="secondary" onclick="loanAction('${e(id)}','Cobro')">✓ Registrar pago</button><button class="secondary" onclick="renameLoan('${e(id)}')">✎ Editar nombre</button>${g.legacy?`<button class="secondary" onclick="loanAction('brother','Descuento')">− Descontar deuda</button>`:`<button class="secondary" onclick="editLoanInitial('${e(id)}')">Editar saldo inicial</button>`}<button class="danger" onclick="archiveFinanceItem('Loans','${e(id)}')">Eliminar préstamo</button></div><h3>Historial de esta deuda</h3>${[...tx].sort((a,b)=>b.date.localeCompare(a.date)).map(m=>`<div class="record"><b>${e(m.type)}</b> · ${f(m.amount)} · ${e(m.date)}<small>${e(m.description||'')} · ${e(m.method||'')}</small></div>`).join('')||'<p class="muted">No hay movimientos posteriores al saldo inicial. El saldo existente se conserva.</p>'}</div></details>`}).join('');}
 function showBills(){ensure();const el=document.getElementById('billList');if(!el)return;el.innerHTML=state.bills.filter(b=>!(state.archivedBills||[]).includes(String(b.id))).map(b=>{const h=state.billPayments.filter(m=>String(m.billId)===String(b.id));return `<details class="fin-detail"><summary><div><h3>📁 ${e(b.name)}</h3><div class="fin-big">${f(b.amount)} / mes</div><small class="muted">Vence el día ${Number(b.day)} · ${h.length} pagos registrados</small></div></summary><div class="fin-detail-body"><div class="actions"><button class="primary" onclick="payBill(${JSON.stringify(b.id)})">＋ Registrar pago</button><button class="secondary" onclick="editBill(${JSON.stringify(b.id)})">✎ Editar</button><button class="danger" onclick="archiveFinanceItem('Bills',${JSON.stringify(String(b.id))})">Eliminar pago</button></div><h3>Historial individual</h3>${[...h].sort((a,b)=>b.date.localeCompare(a.date)).map(m=>`<div class="record">${e(m.date)} · <b>${f(m.amount)}</b> · ${e(m.method||'')}</div>`).join('')||'<p class="muted">Sin pagos registrados todavía.</p>'}</div></details>`}).join('');}
 function showDebtors(){ensure();const el=document.getElementById('debtorList');if(!el)return;el.innerHTML=state.debtors.filter(d=>!(state.archivedDebtors||[]).includes(String(d.id))).map(d=>{const h=state.debtorMoves.filter(m=>String(m.debtorId)===String(d.id)),bal=debtorBalance(d);return `<details class="fin-detail"><summary><div><h3>📁 ${e(d.name)} ${d.category?`<span class="tag">${e(d.category)}</span>`:''}</h3><div class="fin-big">${f(bal)}</div><small class="muted">Cuota: ${f(d.monthly)} · día ${d.day} · ${h.length} movimientos</small></div></summary><div class="fin-detail-body"><div class="actions"><button class="primary" onclick="debtorAction(${JSON.stringify(d.id)},'Cobro')">✓ Registrar cobro</button><button class="secondary" onclick="debtorAction(${JSON.stringify(d.id)},'Aumento')">＋ Aumentar deuda</button><button class="secondary" onclick="editDebtor(${JSON.stringify(d.id)})">✎ Editar nombre y categoría</button><button class="danger" onclick="archiveFinanceItem('Debtors',${JSON.stringify(String(d.id))})">Eliminar deudor</button></div><h3>Historial individual</h3>${[...h].sort((a,b)=>b.date.localeCompare(a.date)).map(m=>`<div class="record">${e(m.date)} · ${e(m.type)} · <b>${f(m.amount)}</b><small>${e(m.description||'')}</small></div>`).join('')||'<p class="muted">Sin movimientos posteriores al saldo inicial.</p>'}</div></details>`}).join('');}
@@ -326,7 +326,7 @@ function renderArchive(){
  const kinds={Goals:'Ahorros',Loans:'Préstamos',Bills:'Pagos mensuales',Debtors:'Otros deudores'};
  const lists={Goals:[{id:'moto',name:state.motoVisual?.name||'Honda NX190 + protección'},...(state.extraGoals||[])],Loans:[{id:'brother',name:state.brotherLabel||'Deuda hermano'},...(state.loans||[])],Bills:state.bills||[],Debtors:state.debtors||[]};
  const entries=Object.keys(kinds).flatMap(kind=>(state['archived'+kind]||[]).map(id=>({kind,id,item:lists[kind].find(x=>String(x.id)===id)})));
- box.innerHTML='<h3>📦 Elementos eliminados (recuperables)</h3>'+(entries.map(x=>`<div class="record">${e(kinds[x.kind])}: ${e(x.item?.name||'Elemento anterior')} <button class="secondary" onclick="restoreFinanceItem('${x.kind}',${JSON.stringify(x.id)})">Restaurar</button></div>`).join('')||'<p class="muted">No hay elementos eliminados.</p>');
+ box.innerHTML='<h3>📦 Elementos eliminados (recuperables)</h3>'+(entries.map(x=>`<div class="record">${e(kinds[x.kind])}: ${e(x.item?.name||'Elemento anterior')} <button class="secondary" onclick="restoreFinanceItem('${x.kind}',${JSON.stringify(x.id)})">Restaurar</button> <button class="danger" onclick="deleteArchivedForever('${x.kind}',${JSON.stringify(x.id)})">🗑 Borrar</button></div>`).join('')||'<p class="muted">No hay elementos eliminados.</p>');
 }
 const archive=document.createElement('div');archive.id='financeArchive';archive.className='card';document.getElementById('ajustes')?.appendChild(archive);
 
@@ -358,7 +358,7 @@ function ensureTrash(){state.trash??=[];state.archivedGoals??=[];state.archivedL
 const nav=document.getElementById('nav'),main=document.querySelector('main');
 const trashNav=document.createElement('button');trashNav.dataset.page='papelera';trashNav.dataset.icon='🗑';trashNav.textContent='🗑　Papelera';nav.insertBefore(trashNav,nav.querySelector('[data-page="ajustes"]'));
 const section=document.createElement('section');section.id='papelera';section.className='section';
-section.innerHTML='<div class="card"><div class="row"><div><h3>🗑️ Papelera de elementos eliminados</h3><p class="muted">Aquí puedes recuperar movimientos, pagos, deudores, préstamos y metas eliminados. Eliminar no significa perderlos definitivamente.</p></div><button class="secondary" onclick="exportData()">↓ Descargar respaldo</button></div><div id="trashList"></div></div>';
+section.innerHTML='<div class="card"><div class="row"><div><h3>🗑️ Papelera de elementos eliminados</h3><p class="muted">Aquí puedes restaurar elementos eliminados o borrarlos definitivamente. El borrado definitivo requiere dos confirmaciones y no se puede deshacer.</p></div><button class="secondary" onclick="exportData()">↓ Descargar respaldo</button></div><div id="trashList"></div></div>';
 main.appendChild(section);
 const oldGo=go;go=function(page){oldGo(page);if(page==='papelera'){document.getElementById('heading').textContent='Tu papelera';document.getElementById('subtitle').textContent='Recupera elementos eliminados accidentalmente.';renderTrash()}};
 trashNav.onclick=()=>go('papelera');
@@ -430,11 +430,43 @@ function renderTrash(){
  ].flatMap(([kind,label,items])=>(state['archived'+kind]||[]).map(id=>({kind,id,label,name:items.find(x=>String(x.id)===String(id))?.name||'Registro anterior'})));
  let html=state.trash.slice().reverse().map(x=>{
   const name=x.item.name||x.item.description||x.item.type||'Registro';
-  return `<div class="trash-row"><div><b>${safe(labels[x.type]||x.type)}: ${safe(name)}</b><small>${x.item.amount!=null?fmt(x.item.amount)+' · ':''}Eliminado: ${new Date(x.deletedAt).toLocaleString('es-PE')}</small></div><button class="primary" onclick="restoreTrash(${JSON.stringify(x.trashId)})">↶ Restaurar</button></div>`;
+  return `<div class="trash-row"><div><b>${safe(labels[x.type]||x.type)}: ${safe(name)}</b><small>${x.item.amount!=null?fmt(x.item.amount)+' · ':''}Eliminado: ${new Date(x.deletedAt).toLocaleString('es-PE')}</small></div><div class="actions"><button class="primary" onclick="restoreTrash(${JSON.stringify(x.trashId)})">↶ Restaurar</button><button class="danger" onclick="deleteTrashForever(${JSON.stringify(x.trashId)})">🗑 Borrar</button></div></div>`;
  }).join('');
- html+=archived.map(x=>`<div class="trash-row"><div><b>${safe(x.label)}: ${safe(x.name)}</b><small>Carpeta archivada con su historial</small></div><button class="primary" onclick="restoreFinanceItem('${x.kind}',${JSON.stringify(x.id)})">↶ Restaurar</button></div>`).join('');
+ html+=archived.map(x=>`<div class="trash-row"><div><b>${safe(x.label)}: ${safe(x.name)}</b><small>Carpeta archivada con su historial</small></div><div class="actions"><button class="primary" onclick="restoreFinanceItem('${x.kind}',${JSON.stringify(x.id)})">↶ Restaurar</button><button class="danger" onclick="deleteArchivedForever('${x.kind}',${JSON.stringify(x.id)})">🗑 Borrar</button></div></div>`).join('');
  box.innerHTML=html||'<p class="muted">La papelera está vacía. No tienes elementos eliminados.</p>';
 }
+ function confirmPermanent(name){
+  if(!confirm('¿Borrar DEFINITIVAMENTE '+name+'? No podrás restaurarlo desde la papelera. Antes puedes descargar un respaldo.'))return false;
+  return prompt('Para confirmar el borrado definitivo escribe BORRAR:')==='BORRAR';
+ }
+ window.deleteTrashForever=function(id){
+  ensureTrash();const i=state.trash.findIndex(x=>x.trashId===id);if(i<0)return;
+  const item=state.trash[i];const name=item.item?.name||item.item?.description||item.type||'este elemento';
+  if(!confirmPermanent('«'+name+'»'))return;
+  state.trash.splice(i,1);persist();render();
+ };
+ window.deleteArchivedForever=function(kind,id){
+  ensureTrash();const key='archived'+kind;if(!(state[key]||[]).includes(String(id)))return;
+  if((kind==='Goals'&&String(id)==='moto')||(kind==='Loans'&&String(id)==='brother')){
+   alert('Esta carpeta contiene el registro histórico principal. Por seguridad no se puede borrar definitivamente; puedes restaurarla o mantenerla archivada.');return;
+  }
+  const collections={Goals:'extraGoals',Loans:'loans',Bills:'bills',Debtors:'debtors'};
+  const collection=collections[kind];if(!collection)return;
+  const item=(state[collection]||[]).find(x=>String(x.id)===String(id));
+  if(!item)return alert('No se encontró la carpeta original.');
+  if(!confirmPermanent('la carpeta «'+item.name+'» y su historial individual'))return;
+  if(kind==='Goals'){
+    // Los aportes son movimientos contables; conservarlos evita alterar el saldo disponible.
+    // Se eliminan de la carpeta, pero permanecen en el registro general de movimientos.
+    // Mantener los movimientos originales y su identificador para no alterar saldos ni auditoría.
+  }
+  if(kind==='Loans')state.loanMoves=(state.loanMoves||[]).filter(m=>String(m.loanId)!==String(id));
+  if(kind==='Debtors')state.debtorMoves=(state.debtorMoves||[]).filter(m=>String(m.debtorId)!==String(id));
+  // Pagos registrados se mantienen en la contabilidad y en el historial general.
+  state[collection]=state[collection].filter(x=>String(x.id)!==String(id));
+  state[key]=state[key].filter(x=>x!==String(id));
+  persist();render();
+ };
 window.restoreTrash=function(id){
  ensureTrash();const i=state.trash.findIndex(x=>x.trashId===id);if(i<0)return;
  const t=state.trash[i],collections={movement:'movements',debtorMove:'debtorMoves',billPayment:'billPayments',bill:'bills',debtor:'debtors'};
@@ -448,7 +480,7 @@ window.restoreTrash=function(id){
  }
  state.trash.splice(i,1);persist();render();renderTrash();
 };
-const prevRender=render;render=function(){ensureTrash();prevRender();addInitialButtons();renderTrash()};
+const prevRender=render;render=function(){ensureTrash();prevRender();renderTrash()};
 const oldRestore=window.restoreFinanceItem;
 window.restoreFinanceItem=function(kind,id){oldRestore(kind,id);renderTrash()};
 const initialLabel=document.getElementById('initialSaving')?.closest('label');
